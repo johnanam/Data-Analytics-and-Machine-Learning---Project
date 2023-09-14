@@ -1,0 +1,305 @@
+# import common modules for data analysis 
+
+import pandas as pd 
+import numpy as np
+import scipy as sc
+import matplotlib.pyplot as plt
+import sklearn as sk
+import seaborn as sns
+
+pd.set_option('display.max.rows',8168)    # Max display
+
+pd.set_option('display.max.columns',17)
+
+## Data Acquistion 
+
+df = pd.read_csv(r"C:\Users\HP\OneDrive\Desktop\Python Full Course\FHS.csv")
+
+df
+
+# Scanning the DataFrame
+
+## What does the dataframe look like ?
+df.head()
+
+## Dimensions 
+df.shape
+
+# What are the datatypes of the columns 
+
+df.info()
+
+# Basic descriptive 
+
+pd.set_option('display.float_format',lambda x: '%.3f' % x)
+
+df.describe().transpose()
+
+# Data Filtering
+
+## How to delete the ID variables? -not useful to the model 
+
+#df = df.drop(['PID','IDTYPE'],axis = 1)
+
+
+
+# find missing values 
+
+df.isnull()
+
+# Which columns are missing values and what is the extent of the missingness ?
+df.isnull().sum()#/len(df)*100
+
+df['education'].sum()
+
+## How to Detect Missing Values 
+
+#!pip install missingno
+
+
+import missingno as msno
+
+## How to visualize the relative missingness of the columns ?
+
+msno.bar(df)
+plt.show()
+
+## How to visualise the relative missingness of the dataset 
+
+msno.matrix(df)
+plt.show()
+
+## How to visualise the relative missingness of the columns ?
+
+import missingno as msno
+msno.heatmap(df)
+plt.show()
+
+
+# Dealing with Missing Values 
+***
+## Most Columns are Missing values;two Columns are Missing ~2%;others are less than 0.3%
+
+## How to replace the missing values ?
+#df['education'] = df['education'].fillna(df['education'].mean())
+df['BPMeds'] = df['BPMeds'].fillna(df['BPMeds'].mean())
+df['totChol'] = df['totChol'].fillna(df['totChol'].mean())
+df['glucose'] = df['glucose'].fillna(df['glucose'].mean())
+
+#df['education'].fillna(df['education'].mean(),inplace = True)
+
+#df.dropna()
+
+df.isnull().sum()
+
+df.isnull().sum()/len(df)*100
+
+# Drop rows with >10% missingness
+
+df = df.dropna()
+
+df.isnull().sum()#/len(df)*100
+
+# Checking for Duplicates 
+
+df.duplicated().sum()
+
+## Remove duplicates 
+
+#df.duplicates(['subset'])
+
+## Data Transformation 
+
+df.info()
+
+# Transforming text to integers 
+
+df['education'].unique()
+
+df['education'] = df['education'].replace(['tertiary','primary','No education','Secondary','Lower Primary'],[4.,2.,1.,3.,1.97944377])
+
+df['education'].value_counts(normalize = True)
+
+#df['Diab_Status'] = df['Diab_Status'].replace(['Non-Diabetic','Diabetic'],[1,2])
+
+#df['Diab_Status'].unique()
+
+# Get Dummies 
+
+#pd.get_dummies(df['Diab_Status'])
+
+#df['Age_group'].unique()
+
+# Import LabelEncorder from sklearn library from preprocessing Module.
+
+#from sklearn.preprocessing import LabelEncorder
+
+## creating a instance of label Encorder 
+
+# le = LabelEncorder()
+
+# df['Age_grp'].value_counts().plot(kind = 'bar')
+
+## Categories a instance of label Encorder :
+
+#df['BMI_Group'].value_counts()
+
+
+df['diabetes'].unique()
+
+#  Continuous Variables 
+
+## filter out a subset of categorical variables 
+
+df_count = df.select_dtypes(include = ['float'])
+
+df_count.info()
+
+# Generate Machine Learning Model 
+
+## distribution in target variable 
+
+df['diabetes'].value_counts(normalize = True)
+
+## Visualize the distribution in target variable - barchart 
+
+df['diabetes'].value_counts().plot(kind = 'bar')
+
+plt.show()
+
+## Visualize the distribution in target variable - piechart
+
+plt.figure(figsize = (10,7))
+df['diabetes'].value_counts().plot(kind = 'pie',autopct = '%1.1f%%',labels = ['No diabetes','diabetes'])
+plt.show()
+
+# 1st Split (into x and y)
+
+## separate array into input(x) and output(y) components
+
+x = df
+x.shape
+
+## create the response/outcome matrix 
+
+y = df['diabetes']
+y.shape
+
+# The Synthetic Minority Oversampling (SMOTE)
+
+## load the SMOTE module 
+
+from imblearn.over_sampling import SMOTE
+
+## Create test and train and SMOTE the x matrices 
+
+os = SMOTE(random_state = 0)
+x_os,y_os = os.fit_resample(x,y)
+
+## dimensions of the matrices 
+
+x_os.shape,y_os.shape
+
+## distribution of categories of target variable 
+
+y_os.value_counts(normalize = True)
+
+## visualize the distribution - python basic 
+
+y_os.value_counts().plot(kind = 'bar')
+
+plt.show()
+
+## visualize the distribution - sns
+
+sns.countplot(x = y_os)
+
+plt.show()
+
+df_os = pd.DataFrame(x_os)  ## creating a new dataset 
+    
+df_os['diabetes'] = y_os
+
+df_os
+
+plt.figure(figsize = (7,5))
+sns.scatterplot(data = df_os , x = 'BMI',y = 'age' , hue = 'diabetes')
+plt.show()
+
+# 2nd split (train & test)
+
+# Importing models from scikit-learn module:
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import KFold
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.tree import DecisionTreeClassifier,export_graphviz
+from sklearn import metrics 
+
+## split data into train and test 
+
+from sklearn.model_selection import train_test_split
+
+x_train,x_test,y_train,y_test = train_test_split(x_os,y_os,test_size = 0.3,random_state = 0)
+
+# Scaling the values 
+
+##scaling train features for optimal model performance 
+sc_train = StandardScaler().fit(x_train)
+
+x_train_sc = sc_train.transform(x_train)
+x_train_sc
+
+## Snapshot of the transformed data
+
+np.set_printoptions(precision = 3)
+print(x_train_sc[0:5,:])
+
+## Training the Model 
+
+# create an instance of the logistic Regression Model
+
+model_lr = LogisticRegression(solver = 'liblinear')
+
+
+## use train data to train the model features 
+
+model_lr.fit(x_train,y_train)
+
+# Testing  the Model 
+
+#!pip install scikit-learn
+
+from sklearn.preprocessing import StandardScaler
+
+## Scaling test feaatures for optimal model performance 
+sc_test = StandardScaler().fit(x_test)
+x_test_sc = sc_test.transform(x_test)
+
+x_test_sc
+
+## Test the performance of the model on the test data 
+
+results = model_lr.score(x_test_sc,y_test)
+
+results*100
+
+# test the performance of the model on the test data 
+
+results = model_lr.score(x_train,y_train)
+
+results*100
+
+# Model Optimization 
+
+df.info()
+
+## list of categorical columns 
+
+#cat_col
+
+
+
+
+
+
+
